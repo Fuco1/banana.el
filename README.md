@@ -17,11 +17,11 @@ Monads are like burittos, or koalas... I've always seen them as bananas. Do you 
 ;; which expands to
 (monad-bind
  '(1 2 3)
- (lambda (x)
+ (lambda (p)
    (monad-bind
     '(1 2 3)
-    (lambda (y)
-      (monad-return (cons x y))))))
+    (lambda (q)
+      (monad-return (cons p q))))))
 ;; which is equivalent to
 (monad-lift2 'cons '(1 2 3) '(1 2 3))
 
