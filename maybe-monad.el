@@ -44,7 +44,7 @@
          (fmap (gethash
                 type
                 functor-dispatch-table-fmap
-                (lambda (_ _) (error "Monad instance for %s not defined" type)))))
+                (lambda (_ _) (error "Functor instance for %s not defined" type)))))
     (funcall fmap function thing)))
 
 ;;;;; Monad class
