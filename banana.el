@@ -74,7 +74,7 @@
   (let* ((ret (gethash
                monad-type
                monad-dispatch-table-return
-               (lambda (_ _) (error "Monad instance for %s not defined" monad-type)))))
+               (lambda (_) (error "Monad instance for %s not defined" monad-type)))))
     (funcall ret thing)))
 
 (defun monad-lift (f a)
