@@ -31,6 +31,18 @@
 ;;; Code:
 (require 'dash)
 
+;; add font-locking for instance declarations
+(font-lock-add-keywords
+ 'emacs-lisp-mode `((,(concat "("
+                              (regexp-opt '("instance-functor"
+                                            "instance-monad") t)
+                              "\\>"
+                              " +\\(\\(?:\\s_\\|\\sw\\)+\\)"
+                              " +\\(where\\)")
+                     (1 font-lock-keyword-face)
+                     (2 font-lock-constant-face)
+                     (3 font-lock-keyword-face))))
+
 ;;;;; Functor class
 (defvar functor-dispatch-table-fmap (make-hash-table)
   "Hashtable that dispatches fmap based on functor type.")
