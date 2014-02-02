@@ -226,23 +226,61 @@ Type: (b -> m c) -> (a -> m b) -> a -> m c"
            (monad-do ,@(cdr things)))
       (car things)))))
 
+;;;;; data types
+
+;; TODO: add extractors too!
+(defmacro banana-data (name &rest stuff)
+  "Define an algebraic data type.
+
+It creates all the constructors with names of form:
+  (lowercase class)-(lowercase constructor)
+
+For each constructor there is a test method to see if instance is
+of that type with name:
+  (lowercase class)-is-(lowercase constructor)-p
+
+Syntax is like Haskell."
+  (let* ((parts (--split-with (not (eq '= it)) stuff))
+         (types (car parts))
+         (all-defs (cdadr parts))
+         (definitions (--remove (equal it '(|)) (--partition-by (eq '| it) all-defs)))
+         (type-name (symbol-name name))
+         (constructors
+          (-mapcat
+           (lambda (def)
+             (let* ((constructor (car def))
+                    (args (cdr def))
+                    (constructor-name (symbol-name constructor))
+                    (name-function (intern (concat (downcase type-name) "-" (downcase constructor-name))))
+                    (name-predicate (intern (concat (downcase type-name) "-is-"
+                                                    (downcase constructor-name) "-p"))))
+               (list
+                `(defun ,name-function ,args
+                   ,(format "Create instance of %s with constructor %s\n\nType: %s"
+                            type-name constructor-name
+                            (concat
+                             (let ((args-formated (mapconcat 'symbol-name args " -> ")))
+                               (if (equal "" args-formated) ""
+                                 (concat args-formated " -> ")))
+                             (concat type-name " " (mapconcat 'symbol-name types " "))))
+                   (vector ',name ',constructor ,@args))
+                `(defun ,name-predicate (t)
+                   ,(format "Return non-nil if T is instance %s of type %s\n\nType: %s -> Bool"
+                            constructor-name type-name
+                            (concat type-name " " (mapconcat 'symbol-name types " ")))
+                   (and (eq (elt t 0) ',name)
+                        (eq (elt t 1) ',constructor))))))
+           definitions)))
+    (cons 'progn constructors)))
+
 ;;;;; Maybe data type & instances
 ;; so far types are just rough convention [Type Constructor data]
 ;; lists are special-cased so you can simply use (bla bla bla)
 
-;; data Maybe a = Nothing | Just a
+(banana-data Maybe a = Nothing | Just a)
 
-(defun just (thing)
-  "Return Just THING.
-
-Type: a -> Maybe a"
-  (vector 'Maybe 'Just thing))
-
-(defun nothing ()
-  "Return Nothing.
-
-Type: Maybe a"
-  (vector 'Maybe 'Nothing))
+(defalias 'just 'maybe-just)
+(defalias 'nothing 'maybe-nothing)
 
 (defun maybe-from-just (thing)
   "Extract value from Just THING.
@@ -253,12 +291,6 @@ Type: Maybe a -> a"
   (if (maybe-is-nothing-p thing)
       (error "There is Nothing in there!")
     (elt thing 2)))
-
-(defun maybe-is-nothing-p (thing)
-  "Return non-nil if THING is Nothing.
-
-Type: Maybe a -> Bool"
-  (equal thing [Maybe Nothing]))
 
 (instance-monad Maybe where
   ;; a -> m a
@@ -276,31 +308,7 @@ Type: Maybe a -> Bool"
 
 ;;;;; Either data type
 
-;; data Either a b = Left a | Right b
-
-(defun either-left (thing)
-  "Return Left THING.
-
-Type: a -> Either a b"
-  (vector 'Either 'Left thing))
-
-(defun either-right (thing)
-  "Return Right THING.
-
-Type: b -> Either a b"
-  (vector 'Either 'Right thing))
-
-(defun either-is-left-p (thing)
-  "Return non-nil if this is Left thing.
-
-Type: Either a b -> Bool"
-  (eq (elt thing 1) 'Left))
-
-(defun either-is-right-p (thing)
-  "Return non-nil if this is Right thing.
-
-Type: Either a b -> Bool"
-  (eq (elt thing 1) 'Right))
+(banana-data Either a b = Left a | Right b)
 
 (defun either-from-left (thing)
   "Extract the value of Left THING.
