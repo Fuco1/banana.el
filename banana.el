@@ -161,7 +161,9 @@ Type: a -> m a"
 (defun monad-join (m)
   "The `join' function is the conventional monad join operator.
 It is used to remove one level of monadic structure, projecting
-its bound argument into the outer level."
+its bound argument into the outer level.
+
+Type: m (m a) -> m a"
   (monad-bind m 'identity))
 
 (defun monad-lift (f a)
@@ -181,13 +183,17 @@ Example: (monad-lift2 '+ (just 1) (just 2)) => [Maybe Just 3]"
   (monad-bind a (lambda (x) (monad-bind b (lambda (y) (monad-return (funcall f x y)))))))
 
 (defun monad-compose-right (f g)
-  "Compose two monadic actions into one left-to-right."
+  "Compose two monadic actions into one left-to-right.
+
+Type: (a -> m b) -> (b -> m c) -> a -> m c"
   (lambda (x) (monad-bind (funcall f x) g)))
 
 (defun monad-compose-left (g f)
   "Compose two monadic actions into one right-to-left.
 
-This is like `monad-compose-right' with arguments flipped."
+This is like `monad-compose-right' with arguments flipped.
+
+Type: (b -> m c) -> (a -> m b) -> a -> m c"
   (lambda (x) (monad-bind (funcall f x) g)))
 
 (defalias '>=> 'monad-compose-right)
@@ -261,29 +267,41 @@ Type: Maybe a -> Bool"
 ;; data Either a b = Left a | Right b
 
 (defun either-left (thing)
-  "Return Left THING."
+  "Return Left THING.
+
+Type: a -> Either a b"
   (vector 'Either 'Left thing))
 
 (defun either-right (thing)
-  "Return Right THING."
+  "Return Right THING.
+
+Type: b -> Either a b"
   (vector 'Either 'Right thing))
 
 (defun either-is-left-p (thing)
-  "Return non-nil if this is Left thing."
+  "Return non-nil if this is Left thing.
+
+Type: Either a b -> Bool"
   (eq (elt thing 1) 'Left))
 
 (defun either-is-right-p (thing)
-  "Return non-nil if this is Right thing."
+  "Return non-nil if this is Right thing.
+
+Type: Either a b -> Bool"
   (eq (elt thing 1) 'Right))
 
 (defun either-from-left (thing)
-  "Extract the value of Left THING."
+  "Extract the value of Left THING.
+
+Type: Either a b -> a"
   (if (not (either-is-left-p thing))
       (error "This is not a Left thing.")
     (elt thing 2)))
 
 (defun either-from-right (thing)
-  "Extract the value of Right THING."
+  "Extract the value of Right THING.
+
+Type: Either a b -> b"
   (if (not (either-is-right-p thing))
       (error "This is not a Right thing.")
     (elt thing 2)))
