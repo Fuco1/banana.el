@@ -77,7 +77,20 @@
                (lambda (_ _) (error "Monad instance for %s not defined" monad-type)))))
     (funcall ret thing)))
 
+(defun monad-lift (f a)
+  "Promote a function to a monad.
+
+Type: (a -> b) -> m a -> m b
+
+Example: (monad-lift '1+ (just 2)) => [Maybe Just 3]"
+  (monad-bind a (lambda (x) (monad-return (funcall f x)))))
+
 (defun monad-lift2 (f a b)
+  "Promote a binary function to a monad.
+
+Type: (a -> b -> r) -> m a -> m b -> m r
+
+Example: (monad-lift2 '+ (just 1) (just 2)) => [Maybe Just 3]"
   (monad-bind a (lambda (x) (monad-bind b (lambda (y) (monad-return (funcall f x y)))))))
 
 (defun monad-compose-right (f g)
