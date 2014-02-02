@@ -48,12 +48,28 @@
     (funcall fmap function thing)))
 
 ;;;;; Monad class
-(defvar monad-dispatch-table-bind (make-hash-table))
-(defvar monad-dispatch-table-then (make-hash-table))
-(defvar monad-dispatch-table-return (make-hash-table))
-(defvar monad-type nil) ;; so much hack it hurts
+(defvar monad-dispatch-table-bind (make-hash-table)
+  "Hashtable that dispatches the bind action based on monad type.")
+(defvar monad-dispatch-table-then (make-hash-table)
+  "Hashtable that dispatches the then action based on monad type.")
+(defvar monad-dispatch-table-return (make-hash-table)
+  "Hashtable that dispatches the return action based on monad type.")
+(defvar monad-type nil ;; so much hack it hurts
+  "Holds the current type of monad while execution is in
+`monad-bind' so that `monad-return' can correctly re-wrap the
+values.  It is defined as `defvaf' to preserve dynamic scoping.")
 
 (defmacro instance-monad (name where &rest body)
+  "Define instance of Monad class for type NAME.
+
+You have to define two operations, `bind' and `return'.
+Optionally, `then' can be defined if default implementation is
+found inefficient.  The definitions can be in any order.
+
+Example:
+  (instance-monad List where
+    (return (x) (list x))
+    (bind (x f) (-mapcat f x)))"
   (declare (indent 2))
   `(progn
      (puthash ',name (lambda ,@(cdr (assoc 'return body))) monad-dispatch-table-return)
@@ -63,6 +79,14 @@
      nil))
 
 (defun monad-bind (thing function)
+  "Sequentially compose two actions, passing any value produced
+by the first as an argument to the second.
+
+This means, \"unbox\" the value of THING and pass it to FUNCTION.
+
+Type: m a -> (a -> m b) -> m b
+
+Example: (monad-bind '(1 2 3) (lambda (x) (list (1+ x) (1- x))))"
   (let* ((monad-type (if (listp thing) 'List (elt thing 0)))
          (bind (gethash
                 monad-type
@@ -86,7 +110,13 @@ Example: (monad-then '(1 2) '(3 4)) => '(3 4 3 4)"
                 monad-dispatch-table-then
                 (lambda (_ _) (monad-bind thing (lambda (_) another))))))
     (funcall then thing another)))
+
+(defalias '>> 'monad-then)
+
 (defun monad-return (thing)
+  "Inject a value THING into the monadic type.
+
+Type: a -> m a"
   (when (not monad-type)
     (error "Failed to infer the monad return type. I was probably called outside of bind context."))
   (let* ((ret (gethash
@@ -124,7 +154,7 @@ This is like `monad-compose-right' with arguments flipped."
 (defalias '>=> 'monad-compose-right)
 (defalias '<=< 'monad-compose-left)
 
-;; this is so crap it hurts.
+;; this is so crap it hurts. Not to be used yet.
 (defmacro monad-do (&rest things)
   (cond
    ((eq (cadr things) '<-)
@@ -143,20 +173,34 @@ This is like `monad-compose-right' with arguments flipped."
 ;; so far types are just rough convention [Type Constructor data]
 ;; lists are special-cased so you can simply use (bla bla bla)
 
-;; a -> m a
+;; data Maybe a = Nothing | Just a
+
 (defun just (thing)
+  "Return Just THING.
+
+Type: a -> Maybe a"
   (vector 'Maybe 'Just thing))
 
-;; m a
 (defun nothing ()
+  "Return Nothing.
+
+Type: Maybe a"
   (vector 'Maybe 'Nothing))
 
-;; m a -> a
 (defun maybe-from-just (thing)
-  (elt thing 2))
+  "Extract value from Just THING.
 
-;; m a -> bool
+Throw an error if THING is Nothing.
+
+Type: Maybe a -> a"
+  (if (maybe-is-nothing-p thing)
+      (error "There is Nothing in there!")
+    (elt thing 2)))
+
 (defun maybe-is-nothing-p (thing)
+  "Return non-nil if THING is Nothing.
+
+Type: Maybe a -> Bool"
   (equal thing [Maybe Nothing]))
 
 (instance-monad Maybe where
