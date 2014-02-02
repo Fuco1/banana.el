@@ -1,6 +1,21 @@
 # banana.el
 
-Monads are like burittos, or koalas... I've always seen them as bananas. Do you like bananas? I hope you do.
+Monads are like burritos, or koalas... I've always seen them as bananas.  Do you like bananas?  I hope you do.
+
+# Contribute
+
+Please do.  This is so silly but so much fun figuring out how to translate it into elisp.  If you have an interesting idea for a data structure and its monad or functor instance, feel free to send a patch!
+
+What needs to be done:
+* Better way to construct data structures.  Some macro that would take something like `data Maybe a = Just a | Nothing` and produce at least data constructors and matching tests for them automatically is really needed.  Functions to extract data would be cool too, but I'm not sure how simple or difficult that might turn out to be.
+* Applicative class. Not sure how well this could be handled due to really meh partiall application in elisp.  But with closures it certainly is possible.
+* Maybe separate the code into more files, one for the classes and another for the data types and their helpers.
+* Add more monadic helpers, like `mapM`, `sequence`, `filterM` etc.
+* Implement `MonadPlus`, and possibly `Monoid`
+* **Improve the `monad-do` macro, it is really bad!**
+* Arrows! (yes we are getting really silly now)
+
+Or anything else that you think is cool.
 
 # Examples
 
