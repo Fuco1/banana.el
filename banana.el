@@ -49,6 +49,7 @@
 
 ;;;;; Monad class
 (defvar monad-dispatch-table-bind (make-hash-table))
+(defvar monad-dispatch-table-then (make-hash-table))
 (defvar monad-dispatch-table-return (make-hash-table))
 (defvar monad-type nil) ;; so much hack it hurts
 
@@ -56,7 +57,10 @@
   (declare (indent 2))
   `(progn
      (puthash ',name (lambda ,@(cdr (assoc 'return body))) monad-dispatch-table-return)
-     (puthash ',name (lambda ,@(cdr (assoc 'bind body))) monad-dispatch-table-bind)))
+     (puthash ',name (lambda ,@(cdr (assoc 'bind body))) monad-dispatch-table-bind)
+     ,(when (assoc 'then body)
+        `(puthash ',name (lambda ,@(cdr (assoc 'then body))) monad-dispatch-table-then))
+     nil))
 
 (defun monad-bind (thing function)
   (let* ((monad-type (if (listp thing) 'List (elt thing 0)))
@@ -68,6 +72,20 @@
 
 (defalias '>>= 'monad-bind)
 
+(defun monad-then (thing another)
+  "Sequentially compose two actions, discarding any value
+produced by the first, like sequencing operators (such as the
+semicolon) in imperative languages.
+
+Type: m a -> m b -> m b
+
+Example: (monad-then '(1 2) '(3 4)) => '(3 4 3 4)"
+  (let* ((monad-type (if (listp thing) 'List (elt thing 0)))
+         (then (gethash
+                monad-type
+                monad-dispatch-table-then
+                (lambda (_ _) (monad-bind thing (lambda (_) another))))))
+    (funcall then thing another)))
 (defun monad-return (thing)
   (when (not monad-type)
     (error "Failed to infer the monad return type. I was probably called outside of bind context."))
