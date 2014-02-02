@@ -256,6 +256,47 @@ Type: Maybe a -> Bool"
                   (nothing)
                 (just (funcall f (maybe-from-just x))))))
 
+;;;;; Either data type
+
+;; data Either a b = Left a | Right b
+
+(defun either-left (thing)
+  "Return Left THING."
+  (vector 'Either 'Left thing))
+
+(defun either-right (thing)
+  "Return Right THING."
+  (vector 'Either 'Right thing))
+
+(defun either-is-left-p (thing)
+  "Return non-nil if this is Left thing."
+  (eq (elt thing 1) 'Left))
+
+(defun either-is-right-p (thing)
+  "Return non-nil if this is Right thing."
+  (eq (elt thing 1) 'Right))
+
+(defun either-from-left (thing)
+  "Extract the value of Left THING."
+  (if (not (either-is-left-p thing))
+      (error "This is not a Left thing.")
+    (elt thing 2)))
+
+(defun either-from-right (thing)
+  "Extract the value of Right THING."
+  (if (not (either-is-right-p thing))
+      (error "This is not a Right thing.")
+    (elt thing 2)))
+
+(instance-functor Either where
+  (fmap (f x) (if (either-is-left-p x) x
+                (either-right (funcall f (either-from-right x))))))
+
+(instance-monad Either where
+  (return (x) (either-right x))
+  (bind (x f) (if (either-is-left-p x) x
+                (funcall f (either-from-right x)))))
+
 ;;;;; List data type
 (instance-monad List where
   (return (x) (list x))
