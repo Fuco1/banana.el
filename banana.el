@@ -223,7 +223,7 @@ Type: Maybe a -> Bool"
   (bind (x f) (-mapcat f x)))
 
 (instance-functor List where
-  (fmap (x f) (mapcar f x)))
+  (fmap (f x) (mapcar f x)))
 
 (provide 'banana)
 
