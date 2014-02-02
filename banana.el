@@ -32,20 +32,52 @@
 (require 'dash)
 
 ;;;;; Functor class
-(defvar functor-dispatch-table-fmap (make-hash-table))
+(defvar functor-dispatch-table-fmap (make-hash-table)
+  "Hashtable that dispatches fmap based on functor type.")
+(defvar functor-dispatch-table-const (make-hash-table)
+  "Hashtable that dispatches const based on functor type.")
 
 (defmacro instance-functor (name where &rest body)
+  "Define instance of Functor class for type NAME.
+
+You have to define one operation `fmap'.  Optionally, `const' can
+be defined if default implementation (fmap . const) is found
+inefficient.
+
+Example:
+  (instance-functor List where
+    (fmap (f x) (mapcar f x)))"
   (declare (indent 2))
   `(progn
-     (puthash ',name (lambda ,@(cdr (assoc 'fmap body))) functor-dispatch-table-fmap)))
+     (puthash ',name (lambda ,@(cdr (assoc 'fmap body))) functor-dispatch-table-fmap)
+     ,(when (assoc 'const body)
+        `(puthash ',name (lambda ,@(cdr (assoc 'const body))) functor-dispatch-table-const))))
 
-(defun functor-bind (function thing)
+(defun functor-fmap (function thing)
+  "Map FUNCTION over THING.
+
+Type: (a -> b) -> f a -> f b"
   (let* ((type (if (listp thing) 'List (elt thing 0)))
          (fmap (gethash
                 type
                 functor-dispatch-table-fmap
                 (lambda (_ _) (error "Functor instance for %s not defined" type)))))
     (funcall fmap function thing)))
+
+(defalias '<$> 'functor-fmap)
+
+(defun functor-const (value thing)
+  "Replace all locations in THING with the same VALUE.
+
+Type: a -> f b -> f a"
+  (let* ((type (if (listp thing) 'List (elt thing 0)))
+         (const (gethash
+                 type
+                 functor-dispatch-table-const
+                 (lambda (c l) (functor-fmap (lambda (_) c)) l))))
+    (funcall const value thing)))
+
+(defalias '<$ 'functor-const)
 
 ;;;;; Monad class
 (defvar monad-dispatch-table-bind (make-hash-table)
