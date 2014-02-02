@@ -50,6 +50,7 @@
 ;;;;; Monad class
 (defvar monad-dispatch-table-bind (make-hash-table))
 (defvar monad-dispatch-table-return (make-hash-table))
+(defvar monad-type nil) ;; so much hack it hurts
 
 (defmacro instance-monad (name where &rest body)
   (declare (indent 2))
@@ -58,19 +59,22 @@
      (puthash ',name (lambda ,@(cdr (assoc 'bind body))) monad-dispatch-table-bind)))
 
 (defun monad-bind (thing function)
-  (let* ((type (if (listp thing) 'List (elt thing 0)))
+  (let* ((monad-type (if (listp thing) 'List (elt thing 0)))
          (bind (gethash
-                type
+                monad-type
                 monad-dispatch-table-bind
-                (lambda (_ _) (error "Monad instance for %s not defined" type)))))
+                (lambda (_ _) (error "Monad instance for %s not defined" monad-type)))))
     (funcall bind thing function)))
 
+(defalias '>>= 'monad-bind)
+
 (defun monad-return (thing)
-  (let* ((type (if (listp thing) 'List (elt thing 0)))
-         (ret (gethash
-                type
-                monad-dispatch-table-return
-                (lambda (_ _) (error "Monad instance for %s not defined" type)))))
+  (when (not monad-type)
+    (error "Failed to infer the monad return type. I was probably called outside of bind context."))
+  (let* ((ret (gethash
+               monad-type
+               monad-dispatch-table-return
+               (lambda (_ _) (error "Monad instance for %s not defined" monad-type)))))
     (funcall ret thing)))
 
 (defun monad-lift2 (f a b)
