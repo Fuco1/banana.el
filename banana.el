@@ -63,8 +63,9 @@ values.  It is defined as `defvaf' to preserve dynamic scoping.")
   "Define instance of Monad class for type NAME.
 
 You have to define two operations, `bind' and `return'.
-Optionally, `then' can be defined if default implementation is
-found inefficient.  The definitions can be in any order.
+Optionally, `then' can be defined if default
+implementation (monad-bind x (lambda (_) k)) is found
+inefficient.  The definitions can be in any order.
 
 Example:
   (instance-monad List where
