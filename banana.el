@@ -80,6 +80,19 @@
 (defun monad-lift2 (f a b)
   (monad-bind a (lambda (x) (monad-bind b (lambda (y) (monad-return (funcall f x y)))))))
 
+(defun monad-compose-right (f g)
+  "Compose two monadic actions into one left-to-right."
+  (lambda (x) (monad-bind (funcall f x) g)))
+
+(defun monad-compose-left (g f)
+  "Compose two monadic actions into one right-to-left.
+
+This is like `monad-compose-right' with arguments flipped."
+  (lambda (x) (monad-bind (funcall f x) g)))
+
+(defalias '>=> 'monad-compose-right)
+(defalias '<=< 'monad-compose-left)
+
 ;; this is so crap it hurts.
 (defmacro monad-do (&rest things)
   (cond
