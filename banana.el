@@ -158,6 +158,12 @@ Type: a -> m a"
                (lambda (_) (error "Monad instance for %s not defined" monad-type)))))
     (funcall ret thing)))
 
+(defun monad-join (m)
+  "The `join' function is the conventional monad join operator.
+It is used to remove one level of monadic structure, projecting
+its bound argument into the outer level."
+  (monad-bind m 'identity))
+
 (defun monad-lift (f a)
   "Promote a function to a monad.
 
