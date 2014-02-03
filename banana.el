@@ -43,6 +43,10 @@
                      (2 font-lock-constant-face)
                      (3 font-lock-keyword-face))))
 
+(defun banana-get-type (thing)
+  "Get the type of banana THING."
+  (if (listp thing) 'List (elt thing 0)))
+
 ;;;;; Functor class
 (defvar functor-dispatch-table-fmap (make-hash-table)
   "Hashtable that dispatches fmap based on functor type.")
@@ -69,7 +73,7 @@ Example:
   "Map FUNCTION over THING.
 
 Type: (a -> b) -> f a -> f b"
-  (let* ((type (if (listp thing) 'List (elt thing 0)))
+  (let* ((type (banana-get-type thing))
          (fmap (gethash
                 type
                 functor-dispatch-table-fmap
@@ -82,7 +86,7 @@ Type: (a -> b) -> f a -> f b"
   "Replace all locations in THING with the same VALUE.
 
 Type: a -> f b -> f a"
-  (let* ((type (if (listp thing) 'List (elt thing 0)))
+  (let* ((type (banana-get-type thing))
          (const (gethash
                  type
                  functor-dispatch-table-const
@@ -132,7 +136,7 @@ This means, \"unbox\" the value of THING and pass it to FUNCTION.
 Type: m a -> (a -> m b) -> m b
 
 Example: (monad-bind '(1 2 3) (lambda (x) (list (1+ x) (1- x))))"
-  (let* ((monad-type (if (listp thing) 'List (elt thing 0)))
+  (let* ((monad-type (banana-get-type thing))
          (bind (gethash
                 monad-type
                 monad-dispatch-table-bind
@@ -149,7 +153,7 @@ semicolon) in imperative languages.
 Type: m a -> m b -> m b
 
 Example: (monad-then '(1 2) '(3 4)) => '(3 4 3 4)"
-  (let* ((monad-type (if (listp thing) 'List (elt thing 0)))
+  (let* ((monad-type (banana-get-type thing))
          (then (gethash
                 monad-type
                 monad-dispatch-table-then
