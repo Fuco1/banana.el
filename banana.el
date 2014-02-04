@@ -7,7 +7,7 @@
 ;; Keywords: lisp
 ;; Version: 0.0.1
 ;; Created: 1st February 2014
-;; Package-requires: ((dash "2.5.0"))
+;; Package-requires: ((dash "2.5.0") (dash-functional "1.0.0"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@
 
 ;;; Code:
 (require 'dash)
+(require 'dash-functional)
 
 ;; add font-locking for instance declarations
 (font-lock-add-keywords
@@ -47,6 +48,7 @@
   "Get the type of banana THING."
   (if (listp thing) 'List (elt thing 0)))
 
+
 ;;;;; Functor class
 (defvar functor-dispatch-table-fmap (make-hash-table)
   "Hashtable that dispatches fmap based on functor type.")
@@ -95,6 +97,7 @@ Type: a -> f b -> f a"
 
 (defalias '<$ 'functor-const)
 
+
 ;;;;; Monad class
 (defvar monad-dispatch-table-bind (make-hash-table)
   "Hashtable that dispatches the bind action based on monad type.")
@@ -230,7 +233,28 @@ Type: (b -> m c) -> (a -> m b) -> a -> m c"
            (monad-do ,@(cdr things)))
       (car things)))))
 
+
 ;;;;; data types
+(defun banana-format-type (type &optional wrap)
+  "Create pretty-formated type declaration from data specification"
+  (cond
+   ((symbolp type)
+    (symbol-name type))
+   ((listp type)
+    (cond
+     ((= (length type) 1)
+      (concat "[" (banana-format-type (car type) t) "]"))
+     (t
+      (let ((fmtd (concat (symbol-name (car type))
+                          " "
+                          (mapconcat (-cut banana-format-type <> t) (cdr type) " "))))
+        (if wrap (concat "(" fmtd ")") fmtd)))))
+   ((vectorp type)
+    (concat "[" (banana-format-type (elt type 0) t) "]"))))
+
+(defun banana-get-args (args)
+  "Generate argument list for type constructor from data specification."
+  (--map (cl-gensym "B") args))
 
 ;; TODO: add extractors too!
 (defmacro banana-data (name &rest stuff)
@@ -254,29 +278,31 @@ Syntax is like Haskell."
            (lambda (def)
              (let* ((constructor (car def))
                     (args (cdr def))
+                    (constructor-args (banana-get-args args))
                     (constructor-name (symbol-name constructor))
                     (name-function (intern (concat (downcase type-name) "-" (downcase constructor-name))))
                     (name-predicate (intern (concat (downcase type-name) "-is-"
                                                     (downcase constructor-name) "-p"))))
                (list
-                `(defun ,name-function ,args
+                `(defun ,name-function ,constructor-args
                    ,(format "Create instance of %s with constructor %s\n\nType: %s"
                             type-name constructor-name
                             (concat
-                             (let ((args-formated (mapconcat 'symbol-name args " -> ")))
+                             (let ((args-formated (mapconcat 'banana-format-type args " -> ")))
                                (if (equal "" args-formated) ""
                                  (concat args-formated " -> ")))
-                             (concat type-name " " (mapconcat 'symbol-name types " "))))
-                   (vector ',name ',constructor ,@args))
-                `(defun ,name-predicate (t)
-                   ,(format "Return non-nil if T is instance %s of type %s\n\nType: %s -> Bool"
+                             (concat type-name " " (mapconcat 'banana-format-type types " "))))
+                   (vector ',name ',constructor ,@constructor-args))
+                `(defun ,name-predicate (thing)
+                   ,(format "Return non-nil if THING is instance %s of type %s\n\nType: %s -> Bool"
                             constructor-name type-name
-                            (concat type-name " " (mapconcat 'symbol-name types " ")))
-                   (and (eq (elt t 0) ',name)
-                        (eq (elt t 1) ',constructor))))))
+                            (concat type-name " " (mapconcat 'banana-format-type types " ")))
+                   (and (eq (elt thing 0) ',name)
+                        (eq (elt thing 1) ',constructor))))))
            definitions)))
     (cons 'progn constructors)))
 
+
 ;;;;; Maybe data type & instances
 ;; so far types are just rough convention [Type Constructor data]
 ;; lists are special-cased so you can simply use (bla bla bla)
@@ -310,8 +336,8 @@ Type: Maybe a -> a"
                   (nothing)
                 (just (funcall f (maybe-from-just x))))))
 
+
 ;;;;; Either data type
-
 (banana-data Either a b = Left a | Right b)
 
 (defun either-from-left (thing)
@@ -339,6 +365,7 @@ Type: Either a b -> b"
   (bind (x f) (if (either-is-left-p x) x
                 (funcall f (either-from-right x)))))
 
+
 ;;;;; List data type
 (instance-monad List where
   (return (x) (list x))
