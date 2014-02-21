@@ -218,7 +218,7 @@ Example: (monad-then '(1 2) '(3 4)) => '(3 4 3 4)"
 
 (defalias '>> 'monad-then)
 
-(defun monad-return (thing)
+(defun monad-return (thing &optional monad-type)
   "Inject a value THING into the monadic type.
 
 Type: a -> m a"
