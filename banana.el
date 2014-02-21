@@ -29,6 +29,7 @@
 ;; It's very much a work in progress, please heed that warning.
 
 ;;; Code:
+(require 'help-fns)
 (require 'dash)
 (require 'dash-functional)
 
@@ -43,6 +44,58 @@
                      (1 font-lock-keyword-face)
                      (2 font-lock-constant-face)
                      (3 font-lock-keyword-face))))
+
+(defun banana-arity (function)
+  "Return minimum and maximum number of args allowed for FUNCTION.
+
+The returned value is a pair (MIN . MAX).  MIN is the minimum
+number of args.  MAX is the maximum number or the symbol `many',
+for functions with `&rest' args.
+
+Keyword arguments are *not* supported and the return value is
+undefined for such functions."
+  (if (subrp function)
+      (subr-arity function)
+    (let* ((arglist (help-function-arglist function))
+           (required (--take-while (not (or (eq it '&optional)
+                                            (eq it '&rest))) arglist))
+           (optional (--take-while (not (eq it '&rest)) (cdr (memq '&optional arglist))))
+           (rest (cdr (memq '&rest arglist))))
+      (unless (eq t arglist)
+        (cons (length required)
+              (cond (rest 'many)
+                    (optional (+ (length required) (length optional)))
+                    (t (length required))))))))
+
+(defun banana-curry (function)
+  "Curry FUNCTION"
+  (let* ((arity (banana-arity function))
+         (min-arity (car arity))
+         (max-arity (cdr arity))
+         (arglist (help-function-arglist function))
+         (required (--take-while (not (or (eq it '&optional)
+                                          (eq it '&rest))) arglist)))
+    ;; special-case (0 . many) to binary functions. --- unsafe!!!!!
+    (when (and (= min-arity 0)
+               (eq max-arity 'many))
+      (setq min-arity 2)
+      (setq required '(x y)))
+    (-concat '(closure (t)) (cdr (--reduce-r-from `(lambda (,it) ,acc) `(,function ,@required) required)))))
+
+(defun $ (fun &rest args)
+  "Call FUN with arguments ARGS.
+
+This is similar to `funcall' except it automatically curries FUN
+and any functions in the argument list.
+
+See `banana-curry'."
+  (let ((r (banana-curry fun)))
+    (--each args
+      (setq r (funcall r (cond
+                          ((functionp it)
+                           (banana-curry it))
+                          (t it)))))
+    r))
 
 (defun banana-get-type (thing)
   "Get the type of banana THING."
